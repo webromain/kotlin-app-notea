@@ -1,5 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- res/values/themes.xml -->
+<!-- Définit le thème visuel de l'application -->
 <resources>
 
-    <style name="Theme.Notea" parent="android:Theme.Material.Light.NoActionBar" />
+    <!--
+    Thème principal de l'application
+    Basé sur Material Design avec une barre d'action
+    -->
+    <style name="Theme.Notea" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <!-- Couleur primaire : utilisée pour la barre d'app, boutons principaux -->
+        <item name="colorPrimary">#2C2C2C</item>
+
+        <!-- Couleur primaire variante : version plus foncée de la couleur primaire -->
+        <item name="colorPrimaryVariant">#1A1A1A</item>
+
+        <!-- Couleur d'accent : utilisée pour les FAB, switches, etc. -->
+        <item name="colorSecondary">#4CAF50</item>
+
+        <!-- Couleur d'accent variante -->
+        <item name="colorSecondaryVariant">#388E3C</item>
+
+        <!-- Couleur de fond -->
+        <item name="android:colorBackground">#F5F5F5</item>
+
+        <!-- Couleur de surface (cards, dialogs) -->
+        <item name="colorSurface">#FFFFFF</item>
+
+        <!-- Couleur du texte sur les surfaces claires -->
+        <item name="colorOnSurface">#000000</item>
+
+        <!-- Couleur de la barre de statut (en haut de l'écran) -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+
+        <!-- Rendre les icônes de la barre de statut sombres -->
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+
 </resources>

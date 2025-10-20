@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- drawable/search_background.xml -->
+<!-- Arrière-plan arrondi pour la barre de recherche -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#2C2C2C"/>
+    <corners android:radius="24dp"/>
+</shape>

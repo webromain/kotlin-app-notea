@@ -1,27 +1,52 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+AndroidManifest.xml : Fichier de configuration principal de l'application Android
+Il déclare toutes les activités, permissions, et métadonnées de l'app
+-->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+    package="com.example.notea">
 
+    <!--
+    L'application elle-même
+    android:theme définit le thème visuel de l'application
+    -->
     <application
         android:allowBackup="true"
-        android:dataExtractionRules="@xml/data_extraction_rules"
-        android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
-        android:label="@string/app_name"
+        android:label="Notea"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Notea">
+
+        <!--
+        Activité principale (écran de liste des notes)
+        android:exported="true" permet de lancer l'app depuis l'extérieur
+        -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:label="@string/app_name"
-            android:theme="@style/Theme.Notea">
+            android:screenOrientation="portrait">
+
+            <!-- Intent filter : définit cette activité comme point d'entrée de l'app -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+        Activité de détail/édition de note
+        parentActivityName permet le bouton retour automatique dans la barre d'action
+        -->
+        <activity
+            android:name=".NoteDetailActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:parentActivityName=".MainActivity"
+            android:windowSoftInputMode="adjustResize">
+            <!-- adjustResize : redimensionne la fenêtre quand le clavier apparaît -->
+        </activity>
+
     </application>
 
 </manifest>
