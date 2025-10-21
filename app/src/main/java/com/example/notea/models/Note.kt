@@ -1,6 +1,9 @@
 package com.example.notea.models
 
-import java.io.Serializable
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+import androidx.room.TypeConverters
+import com.example.notea.data.Converters
 import java.util.*
 
 /**
@@ -16,7 +19,7 @@ enum class Priority {
 
 /**
  * Classe de données représentant une Note
- * Serializable permet de passer l'objet entre les activités
+ * C'est une entité Room, ce qui signifie qu'elle sera stockée dans une table SQL.
  *
  * @param id Identifiant unique de la note
  * @param title Titre de la note
@@ -26,7 +29,10 @@ enum class Priority {
  * @param isCompleted État de complétion de la note
  * @param createdAt Date de création de la note
  */
+@Entity(tableName = "notes")
+@TypeConverters(Converters::class)
 data class Note(
+    @PrimaryKey
     val id: String = UUID.randomUUID().toString(), // Génère un ID unique automatiquement
     var title: String,
     var content: String,
@@ -34,7 +40,7 @@ data class Note(
     var dueDate: Date? = null, // Null si pas de date d'échéance
     var isCompleted: Boolean = false,
     val createdAt: Date = Date() // Date de création automatique
-) : Serializable {
+) {
 
     /**
      * Retourne la couleur de fond selon la priorité

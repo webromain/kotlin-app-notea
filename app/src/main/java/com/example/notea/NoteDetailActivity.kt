@@ -1,22 +1,25 @@
 package com.example.notea
 
+import android.app.Activity
 import android.app.DatePickerDialog
 import android.content.Intent
 import android.os.Bundle
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
+import com.example.notea.data.AppDatabase
 import com.example.notea.models.Note
 import com.example.notea.models.Priority
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
 
-/**
- * Activité pour créer ou éditer une note
- */
 class NoteDetailActivity : AppCompatActivity() {
 
-    // Vues de l'interface
+    // Vues
     private lateinit var btnBack: ImageButton
     private lateinit var btnMenu: ImageButton
     private lateinit var btnPriority: TextView
@@ -24,35 +27,26 @@ class NoteDetailActivity : AppCompatActivity() {
     private lateinit var editContent: EditText
     private lateinit var btnDate: TextView
 
-    // Note en cours d'édition (null si création)
+    // Base de données
+    private val db by lazy { AppDatabase.getDatabase(this) }
+
+    // Note en cours d'édition
     private var currentNote: Note? = null
 
-    // Priorité sélectionnée
+    // Données temporaires
     private var selectedPriority: Priority = Priority.NORMAL
-
-    // Date d'échéance sélectionnée
     private var selectedDate: Date? = null
-
-    // Format de date
-    private val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    private val dateFormat = SimpleDateFormat("d MMMM yyyy", Locale.FRANCE)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_note_detail)
 
-        // Initialiser les vues
         initViews()
-
-        // Charger la note si elle existe
-        loadNote()
-
-        // Configurer les listeners
+        loadNoteFromDb()
         setupListeners()
     }
 
-    /**
-     * Initialise toutes les vues
-     */
     private fun initViews() {
         btnBack = findViewById(R.id.btnBack)
         btnMenu = findViewById(R.id.btnMenu)
@@ -62,73 +56,55 @@ class NoteDetailActivity : AppCompatActivity() {
         btnDate = findViewById(R.id.btnDate)
     }
 
-    /**
-     * Charge la note passée en paramètre (si elle existe)
-     */
-    private fun loadNote() {
-        currentNote = intent.getSerializableExtra("NOTE") as? Note
+    private fun loadNoteFromDb() {
+        val noteId = intent.getStringExtra("NOTE_ID")
+        if (noteId != null) {
+            lifecycleScope.launch(Dispatchers.IO) { // Lancer en arrière-plan
+                val note = db.noteDao().getNoteById(noteId)
 
-        if (currentNote != null) {
-            // Mode édition : remplir les champs avec les données existantes
-            editTitle.setText(currentNote!!.title)
-            editContent.setText(currentNote!!.content)
-            selectedPriority = currentNote!!.priority
-            selectedDate = currentNote!!.dueDate
-
-            updatePriorityButton()
-            updateDateButton()
+                withContext(Dispatchers.Main) { // Revenir sur le thread principal pour l'UI
+                    currentNote = note
+                    if (note != null) {
+                        // Mode édition : remplir les champs
+                        editTitle.setText(note.title)
+                        editContent.setText(note.content)
+                        selectedPriority = note.priority
+                        selectedDate = note.dueDate
+                        updatePriorityButton()
+                        updateDateButton()
+                    } else {
+                        // La note n'a pas été trouvée, on passe en mode création
+                        updatePriorityButton()
+                    }
+                }
+            }
         } else {
-            // Mode création : champs vides
+            // Mode création
             updatePriorityButton()
         }
     }
 
-    /**
-     * Configure tous les listeners
-     */
     private fun setupListeners() {
-        // Bouton retour : sauvegarder et retourner
-        btnBack.setOnClickListener {
-            saveAndFinish()
-        }
-
-        // Bouton menu : afficher les options
-        btnMenu.setOnClickListener {
-            showOptionsMenu()
-        }
-
-        // Bouton priorité : changer la priorité
-        btnPriority.setOnClickListener {
-            showPriorityDialog()
-        }
-
-        // Bouton date : sélectionner une date
-        btnDate.setOnClickListener {
-            showDatePicker()
-        }
+        btnBack.setOnClickListener { saveAndFinish() }
+        btnMenu.setOnClickListener { showOptionsMenu() }
+        btnPriority.setOnClickListener { showPriorityDialog() }
+        btnDate.setOnClickListener { showDatePicker() }
     }
 
-    /**
-     * Met à jour l'affichage du bouton de priorité
-     */
     private fun updatePriorityButton() {
         btnPriority.text = "Priority > ${getPriorityText(selectedPriority)}"
     }
 
-    /**
-     * Met à jour l'affichage du bouton de date
-     */
     private fun updateDateButton() {
-        if (selectedDate != null) {
-            btnDate.text = "Date > ${dateFormat.format(selectedDate!!)}"
+        // Rendu plus sûr pour éviter les crashs
+        val date = selectedDate
+        btnDate.text = if (date != null) {
+            "Date > ${dateFormat.format(date)}"
         } else {
-            btnDate.text = "Date > Non définie"
+            "Date > Non définie"
         }
     }
 
-    /**
-     * Affiche un dialogue pour choisir la priorité
-     */
     private fun showPriorityDialog() {
         val priorities = arrayOf("Urgent !", "High", "Normal", "Low")
         val priorityValues = arrayOf(Priority.URGENT, Priority.HIGH, Priority.NORMAL, Priority.LOW)
@@ -142,13 +118,11 @@ class NoteDetailActivity : AppCompatActivity() {
             .show()
     }
 
-    /**
-     * Affiche un sélecteur de date
-     */
     private fun showDatePicker() {
         val calendar = Calendar.getInstance()
-        if (selectedDate != null) {
-            calendar.time = selectedDate!!
+        val date = selectedDate
+        if (date != null) {
+            calendar.time = date
         }
 
         DatePickerDialog(
@@ -164,78 +138,75 @@ class NoteDetailActivity : AppCompatActivity() {
         ).show()
     }
 
-    /**
-     * Affiche le menu d'options (supprimer, etc.)
-     */
     private fun showOptionsMenu() {
         if (currentNote != null) {
             AlertDialog.Builder(this)
                 .setTitle("Options")
-                .setItems(arrayOf("Supprimer la note")) { _, _ ->
-                    deleteNote()
-                }
+                .setItems(arrayOf("Supprimer la note")) { _, _ -> deleteNote() }
                 .setNegativeButton("Annuler", null)
                 .show()
         }
     }
 
-    /**
-     * Supprime la note actuelle
-     */
     private fun deleteNote() {
+        val noteToDelete = currentNote ?: return
+
         AlertDialog.Builder(this)
             .setTitle("Supprimer la note")
             .setMessage("Êtes-vous sûr de vouloir supprimer cette note ?")
             .setPositiveButton("Supprimer") { _, _ ->
-                val resultIntent = Intent()
-                resultIntent.putExtra("NOTE", currentNote)
-                resultIntent.putExtra("DELETED", true)
-                setResult(RESULT_OK, resultIntent)
-                finish()
+                lifecycleScope.launch(Dispatchers.IO) {
+                    db.noteDao().delete(noteToDelete)
+                    withContext(Dispatchers.Main) {
+                        val resultIntent = Intent()
+                        resultIntent.putExtra("DELETED", true)
+                        resultIntent.putExtra("NOTE_ID", noteToDelete.id)
+                        setResult(Activity.RESULT_OK, resultIntent)
+                        finish()
+                    }
+                }
             }
             .setNegativeButton("Annuler", null)
             .show()
     }
 
-    /**
-     * Sauvegarde la note et retourne à l'écran principal
-     */
     private fun saveAndFinish() {
         val title = editTitle.text.toString().trim()
         val content = editContent.text.toString().trim()
 
-        // Vérifier que le titre n'est pas vide
         if (title.isEmpty()) {
             Toast.makeText(this, "Le titre ne peut pas être vide", Toast.LENGTH_SHORT).show()
             return
         }
 
-        // Créer ou mettre à jour la note
-        val note = currentNote ?: Note(
-            title = title,
-            content = content,
-            priority = selectedPriority,
-            dueDate = selectedDate
-        )
+        lifecycleScope.launch(Dispatchers.IO) {
+            val noteToSave = if (currentNote == null) {
+                Note(
+                    title = title,
+                    content = content,
+                    priority = selectedPriority,
+                    dueDate = selectedDate
+                )
+            } else {
+                currentNote!!.copy(
+                    title = title,
+                    content = content,
+                    priority = selectedPriority,
+                    dueDate = selectedDate
+                )
+            }
 
-        // Si c'est une mise à jour, modifier les propriétés
-        if (currentNote != null) {
-            note.title = title
-            note.content = content
-            note.priority = selectedPriority
-            note.dueDate = selectedDate
+            db.noteDao().insertOrUpdate(noteToSave)
+
+            withContext(Dispatchers.Main) {
+                val resultIntent = Intent()
+                resultIntent.putExtra("NOTE_ID", noteToSave.id)
+                setResult(Activity.RESULT_OK, resultIntent)
+                finish()
+            }
         }
-
-        // Retourner la note à l'activité principale
-        val resultIntent = Intent()
-        resultIntent.putExtra("NOTE", note)
-        setResult(RESULT_OK, resultIntent)
-        finish()
     }
 
-    /**
-     * Retourne le texte de la priorité en français
-     */
     private fun getPriorityText(priority: Priority): String {
         return when (priority) {
             Priority.URGENT -> "Urgent !"
@@ -245,10 +216,8 @@ class NoteDetailActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Gérer le bouton retour système
-     */
     override fun onBackPressed() {
         saveAndFinish()
+        super.onBackPressed()
     }
 }
